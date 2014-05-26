@@ -1,0 +1,382 @@
+<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+	<title>Visualization System</title>
+
+	<link rel="shortcut icon" href="/DataVisualization/websrc/DSL/index/img/dsl-logo.bmp"/>
+	<meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+	<title>Bootstrap Basic Tab Based Navigation Example</title> 
+	<meta name="description" content="Bootstrap Basic Tab Based Navigation Example">
+	<link href="/DataVisualization/websrc/DSL/index/css/bootstrap.css" rel="stylesheet">
+	<script src="/DataVisualization/websrc/DSL/index/js/jquery-1.11.0.js"></script>
+	<script src="/DataVisualization/websrc/DSL/index/js/bootstrap.min.js"></script>
+	<link rel="stylesheet" href="/DataVisualization/websrc/DSL/index/css/leaflet.css" />
+	<script src="/DataVisualization/websrc/DSL/index/js/leaflet-src.js"></script>
+	<script src="/DataVisualization/websrc/DSL/index/js/d3.js"></script>
+	<link rel="stylesheet" type="text/css" href="/DataVisualization/websrc/DSL/index/css/popwindow.css">
+	<style>
+
+	body {
+	  min-height: 2000px;
+	  padding-top: 70px;
+	}
+	#body {
+	  padding-top: 70px;
+	  padding-bottom: 20px;
+	}
+	.node {
+	  stroke: #fff;
+	  stroke-width: 1.5px;
+	}
+
+	.link {
+	  stroke: #999;
+	  stroke-opacity: .6;
+	}
+	
+	rect.selection {
+		stroke          : gray;
+		stroke-dasharray: 4px;
+		stroke-opacity  : 0.5;
+		fill            : transparent;
+	}
+
+	</style>
+	
+	<script>
+		jQuery(document).ready(function($) {
+			$('.theme-popover-button').click(function(){
+				$('.theme-popover-mask').fadeIn(100);
+				$('.theme-popover').slideDown(200);
+			})
+			$('.theme-poptit .close').click(function(){
+				$('.theme-popover-mask').fadeOut(100);
+				$('.theme-popover').slideUp(200);
+			})
+			$('.theme-popover-mask').click(function(){
+				$('.theme-popover-mask').fadeOut(100);
+				$('.theme-popover').slideUp(200);
+			})
+		})
+	</script>
+	<script>
+	function showNodeInfo(d){
+	
+			var ss="<table  class=\"table table-striped\">"
+				+"<caption><h2>Node</h2></caption> "
+				+"<tbody>"
+				+"<tr>"
+				+"<td>"+"Name"+"</td>"
+				+"<td>"+d.name+"</td>"
+				+"</tr>"
+				+"<tr>"
+				+"<td>"+"IP"+"</td>"
+				+"<td>"+d.ip+"</td>"
+				+"</tr>"
+				+"</tbody>"
+				+"</table>"
+			document.getElementById("informationshow").innerHTML=ss;
+		}
+		
+		function showEdgeInfo(d){
+			var ss="<table  class=\"table table-striped\">"
+				+"<caption><h2>Edge</h2></caption> "
+				+"<tbody>"
+				/*+"<tr>"
+				+"<td>"+"value"+"</td>"
+				+"<td>"+d.value+"</td>"
+				+"</tr>"
+				+"<tr>"
+				+"<td>"+"source.name"+"</td>"
+				+"<td>"+d.source.name+"</td>"
+				+"</tr>"
+				+"<tr>"
+				+"<td>"+"target.name"+"</td>"
+				+"<td>"+d.target.name+"</td>"
+				+"</tr>"*/
+				
+			for(var p in d){
+				ss += "<tr><td>"+p+"</td><td>"+d[p]+"</td></tr>";
+			}
+			ss += "</tbody></table>";
+			document.getElementById("informationshow").innerHTML=ss;
+		}
+		
+		function addD3(labelname, jsonpath, width, height){
+			
+			var color = d3.scale.category20();
+
+			var force = d3.layout.force()
+				.charge(-120)
+				.linkDistance(60)
+				.size([width, height])
+
+			var svg = d3.select(labelname).append("svg")
+				.attr("width", width)
+				.attr("height", height)
+				.call(d3.behavior.zoom().scaleExtent([0.5, 8]).on("zoom", zoom))
+				.on("mousedown.zoom",null)
+				.append("g");
+
+			function zoom() {
+				svg.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+			}
+
+			d3.json(jsonpath, function(error, graph) {
+			force
+				.nodes(graph.nodes)
+				.links(graph.links)
+				.start();
+				 
+			var json = graph;
+			
+			var linkedByIndex = {};
+			json.links.forEach(function(d) {
+				linkedByIndex[d.source.index + "," + d.target.index] = 1;
+			});
+			function isConnected(a, b) {
+				return linkedByIndex[a.index + "," + b.index] || linkedByIndex[b.index + "," + a.index] || a.index == b.index;
+			}
+
+			var link = svg.selectAll(".link")
+				.data(graph.links)
+				.enter().append("line")
+				.attr("class", "link")
+				.style("stroke-width", function(d) { return d.value;/*return Math.sqrt(d.value);*/ })
+				.on("click", function(d) {
+							var selectededge = d;
+							svg.selectAll(".node").style("fill", function(d) { 
+																			if(selectededge.target.name==d.name||selectededge.source.name==d.name){
+																				return "grey"}
+																			return color(d.group); });
+							svg.selectAll(".link").style("stroke", function(d) { return "grey"; });
+							//d3.select(this).classed("selected", true);
+							d3.select(this).style("stroke", "black"); 
+							
+							showEdgeInfo(d)});
+
+			var selcetdNodes = {};
+			var selcetdNodeCount = 0;
+			var node = svg.selectAll(".node")
+				.data(graph.nodes)
+				.enter().append("circle")
+				.attr("class", "node")
+				.attr("r", 5)
+				.style("fill", function(d) { return color(d.group); })
+				.call(force.drag)
+				.on("click", function(d) {
+						// Find previously selected, unselect
+							//d3.select(".selected").classed("selected", false);
+							// Select current item
+							var selectednode = d;
+							var e = d3.event;
+							if(e.ctrlKey){
+								if(selcetdNodes[selectednode.index]===1){
+									selcetdNodes[selectednode.index]=0;
+									selcetdNodeCount = selcetdNodeCount-1;
+									
+									svg.selectAll(".node").style("fill", function(d) { 
+																			if(selcetdNodes[d.index]){
+																				return "black";
+																			}
+																			return color(d.group); });
+								}else{
+									selcetdNodes[selectednode.index]=1;
+									selcetdNodeCount = selcetdNodeCount+1;
+									svg.selectAll(".node").style("fill", function(d) { 
+																			if(selcetdNodes[d.index]){
+																				return "black";
+																			}
+																			return color(d.group); });
+								}
+							}else{
+								selcetdNodes = {};
+								selcetdNodes[selectednode.index]=1;
+								selcetdNodeCount =1;
+							
+								svg.selectAll(".node").style("fill", function(d) { 
+																				if(isConnected(d, selectednode)){
+																					return "grey";
+																				}
+																				return color(d.group); });
+								svg.selectAll(".link").style("stroke", function(d) { if(d.target.name==selectednode.name||d.source.name==selectednode.name){
+																				//d3.select(d.target).style("fill", "black"); //.classed("selected", true);;
+																				//d.source.classed("selected", true);;
+																				return "black";}
+																				else{return "grey";} });
+								d3.select(this).style("fill", "black"); 
+								}
+							//d3.select(this).classed("selected", true);
+							
+							//console.log(selectednode.x);
+							showNodeInfo(d)});
+							
+			svg.on("mousedown", function(d) {
+				console.log("haha");
+			}).on("dbclick",function(d) {
+				alert("kekek");
+			});
+
+			node.append("title")
+				.text(function(d) { return d.name; });
+
+			force.on("tick", function() {
+				link.attr("x1", function(d) { return d.source.x; })
+					.attr("y1", function(d) { return d.source.y; })
+					.attr("x2", function(d) { return d.target.x; })
+					.attr("y2", function(d) { return d.target.y; });
+
+				node.attr("cx", function(d) { return d.x; })
+					.attr("cy", function(d) { return d.y; });
+			});
+			});
+		}
+		
+	function addTheD3Map(labelname, jsonpath){
+		var width = 800,
+			height = 610;
+			width = window.screen.width*0.72;
+		addD3(labelname, jsonpath, width, height);
+		
+	}
+	</script>
+	
+	<script>
+	var map;
+	var layergroup;
+	function addOsmMap(divID){
+		map = L.map(divID).setView([30.67, 104.06], 13);
+
+		// add an OpenStreetMap tile layer
+		L.tileLayer('http://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			//attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+		}).addTo(map);
+
+		
+		// add a marker in the given location, attach some popup content to it and open the popup
+		//!deletable!!deletable!
+		var marker_1 = L.marker([30.67, 104.06])//.addTo(map)
+		.bindPopup('A pretty CSS3 popup. <br> Easily customizable.')
+		.openPopup();
+
+		marker_1.addEventListener("click", function(){marker_1.openPopup()}, false);
+		
+		
+		//add a line   !deletable!
+		var line = L.polyline([[30.67, 104.06],[30, 116]]);//.addTo(map)
+		//.bindPopup('Im a cute line.')
+		//.openPopup();
+		
+		//add a circle   !deletable!
+		var circle = L.circle([30, 116], 500, {
+		color: 'red',
+		fillColor: '#f03',
+		fillOpacity: 0.5
+		})//.addTo(map);
+		
+		layergroup = L.layerGroup([marker_1, line, circle])
+			.addTo(map);
+		//map.removeLayer(layergroup);
+	}			
+						
+	</script>
+</head>
+<body>
+	<!-- Head Line -->
+	<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+	<!--div class="container"-->
+		<div class="navbar-header">
+			<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+				<span class="sr-only">Toggle navigation</span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+			  </button>
+			  <a class="navbar-brand" href="#">Visualization</a>
+		</div>
+		<div class="navbar-collapse collapse">
+			<ul class="nav navbar-nav">
+				<li class="active">
+				<a class="brand" href="#">smallgoodboy</a>
+				</li>
+				<li><a href="#">Portfolio</a></li>
+				<li><a href="#">Contact</a></li>
+				<li class="dropdown">
+					<a href="#" class="dropdown-toggle" data-toggle="dropdown">Dropdown <b class="caret"></b></a>
+					<ul class="dropdown-menu">
+						<li><a href="#">Web Design</a></li>
+						<li><a href="#">Web development</a></li>
+						<li><a href="#">Wordpress Theme development</a></li>
+						<li class="divider"></li>
+						<li class="dropdown-header">Nav header</li>
+						<li><a href="#">Separated link</a></li>
+						<li><a href="#">One more separated link</a></li>
+					</ul>
+				</li>
+				
+				<!--Copy right information-->
+				<li><a class="theme-popover-button">About</a></li>
+					<div class="theme-popover">
+						 <div class="theme-poptit">
+							  <a href="javascript:;" title="close" class="close">close X</a>
+							  <h3>ABOUT</h3>
+						 </div>
+						 <div class="theme-popbod dform">
+								<img src="/DataVisualization/websrc/DSL/index/img/dsl-logo.gif" height="100" width="100" style="height:100px; width:100px"></img>
+								<br></br>
+								<li><h3>Copyright &copy DSL</h3></li>
+								<br>
+								<li><h4><strong>Version:</strong>1.0T</h4></li>
+						 </div>
+					</div>
+				<div class="theme-popover-mask"></div>
+				
+				
+			</ul>
+			<ul class="nav navbar-nav navbar-right">
+				<li class="active"><a href="#">Default</a></li>
+				<li><a href="#">Static top</a></li>
+				<li><a href="#">Fixed top</a></li>
+			</ul>
+		</div>
+	</div>
+	<!--/div-->	
+
+	<!-- Divide the screen to some parts -->
+	<!--div class="container"-->
+	<div class="row-fluid" >
+		<div class="col-md-9">
+			<ul class="nav nav-pills">
+				<li class="active"><a href="#home" data-toggle="tab">Map</a></li>
+				<li><a href="#profile" data-toggle="tab">FDA</a></li>
+			</ul>
+			<div class="tab-content">
+				<div class="tab-pane active" id="home">
+					<div id="map" style="height: 610px; width:100%"></div>
+					<script type="text/javascript">
+						addOsmMap("map")
+					</script>
+
+				</div>
+				<div class="tab-pane" id="profile">
+					<!--iframe src="../testhtml/D3 FDA/ForceDirectedTest.html" width="1000" height="550" scrolling="no" frameborder="0" ></iframe-->
+					<haha id="d3svg" style="height: 610px; width:100%" class="hidden-xs">
+					<script>
+						addTheD3Map("haha", "/DataVisualization/websrc/DSL/index/testdataset.json");
+					</script></haha>
+				</div>
+			</div>
+		</div>
+		
+		<div class="col-md-3" id="informationshow">
+
+		</div>
+		
+		</div>
+	<!--/div-->
+</body>
+</html> 
