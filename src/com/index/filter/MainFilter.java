@@ -17,12 +17,6 @@ public class MainFilter implements Filter {
         String contextPath = request.getRequestURI();
 
         if(contextPath.equals(rootPath)){
-//            ServletContext context2 = request.getServletContext().getContext("/web2");
-//            System.out.println(23432);
-//            System.out.println(context2.toString());
-//            RequestDispatcher requestDispatcher;
-//            requestDispatcher = context2.getRequestDispatcher(newPath);
-//            requestDispatcher.forward(req, resp);
             req.getRequestDispatcher("helloworld").forward(req, resp);
         }
         chain.doFilter(req, resp);

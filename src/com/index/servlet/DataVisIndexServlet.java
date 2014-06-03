@@ -36,9 +36,9 @@ public class DataVisIndexServlet extends javax.servlet.http.HttpServlet {
         HttpSession session = request.getSession(false);
         File file;
         if(session!=null){
-            file = new File("C:\\Users\\smallgoodboy\\IdeaProjects\\DataVisualization\\web\\websrc\\DSL\\index\\try.html");
+            file = new File("J:\\Users\\long\\IdeaProjects\\DataVisualization\\web\\websrc\\DSL\\index\\try.html");
         }else{
-            file = new File("C:\\Users\\smallgoodboy\\IdeaProjects\\DataVisualization\\web\\websrc\\DSL\\index\\yy.html");
+            file = new File("J:\\Users\\long\\IdeaProjects\\DataVisualization\\web\\websrc\\DSL\\index\\yy.html");
         }
 
         String content = "";
